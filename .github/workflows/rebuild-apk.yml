@@ -42,13 +42,23 @@ jobs:
           echo "$PWD" >> $GITHUB_PATH
           echo "✅ Build tools installed"
 
-      - name: Rebuild APK (with framework)
+      - name: Rebuild APK
+        id: rebuild
         run: |
           echo "=== Starting APK rebuild ==="
-          java -jar apktool.jar if framework/res.apk 2>/dev/null || true
-          java -jar apktool.jar b Earn_Rewards_Decompiled -o app-unsigned.apk --use-aapt2 2>&1 || java -jar apktool.jar b Earn_Rewards_Decompiled -o app-unsigned.apk
-          ls -la app-unsigned.apk
-          echo "✅ APK rebuilt successfully"
+          echo "Decompiled folder contents:"
+          ls -la Earn_Rewards_Decompiled/
+          echo ""
+          echo "Running APKTool rebuild..."
+          java -jar apktool.jar b Earn_Rewards_Decompiled -o app-unsigned.apk 2>&1 | tee rebuild.log
+          if [ -f app-unsigned.apk ]; then
+            ls -la app-unsigned.apk
+            echo "✅ APK rebuilt successfully"
+          else
+            echo "❌ APK rebuild failed - checking log..."
+            tail -50 rebuild.log
+            exit 1
+          fi
 
       - name: ZipAlign APK
         run: |
