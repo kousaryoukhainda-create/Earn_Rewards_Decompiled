@@ -1,0 +1,62 @@
+name: Upload Original APK
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '*.apk'
+      - 'original-apk/*.apk'
+  workflow_dispatch:
+
+jobs:
+  upload-apk:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Find APK files
+        id: find-apk
+        run: |
+          echo "=== Searching for APK files ==="
+          find . -name "*.apk" -type f | head -20
+          
+          # Count APKs
+          APK_COUNT=$(find . -name "*.apk" -type f | wc -l)
+          echo "apk_count=$APK_COUNT" >> $GITHUB_OUTPUT
+          echo "Found $APK_COUNT APK file(s)"
+      
+      - name: Upload APK to Release
+        if: steps.find-apk.outputs.apk_count > 0
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            *.apk
+            original-apk/*.apk
+          tag_name: original-apk-${{ github.run_number }}
+          name: Original APK Build #${{ github.run_number }}
+          generate_release_notes: true
+          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Upload APK as Artifact
+        if: steps.find-apk.outputs.apk_count > 0
+        uses: actions/upload-artifact@v4
+        with:
+          name: original-apk
+          path: |
+            *.apk
+            original-apk/*.apk
+          retention-days: 30
+      
+      - name: Display Download Info
+        if: steps.find-apk.outputs.apk_count > 0
+        run: |
+          echo "✅ APK uploaded successfully!"
+          echo ""
+          echo "📥 Download from Releases:"
+          echo "https://github.com/kousaryoukhainda-create/Earn_Rewards_Decompiled/releases"
+          echo ""
+          echo "📦 Or download from Actions artifacts (30 days retention)"
