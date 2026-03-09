@@ -64,3 +64,4 @@ apksigner verify app-signed.apk
 2. **Production:** Use your own signing key for release builds
 3. **Original App:** This is a decompiled app - rebuilding may not work perfectly
 4. **Legal:** Ensure you have rights to rebuild this application
+# APK Rebuild Trigger
