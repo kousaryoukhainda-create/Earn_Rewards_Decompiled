@@ -1,0 +1,76 @@
+name: Rebuild APK
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  rebuild-apk:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '11'
+      
+      - name: Download APKTool
+        run: |
+          wget https://github.com/iBotPeaches/Apktool/releases/download/v2.9.0/apktool_2.9.0.jar -O apktool.jar
+          chmod +x apktool.jar
+      
+      - name: Download ZipAlign
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y zipalign apksigner
+      
+      - name: Rebuild APK
+        run: |
+          java -jar apktool.jar b Earn_Rewards_Decompiled -o app-unsigned.apk
+          echo "✅ APK rebuilt successfully"
+      
+      - name: ZipAlign APK
+        run: |
+          zipalign -v -p 4 app-unsigned.apk app-aligned.apk
+          echo "✅ APK zipaligned"
+      
+      - name: Generate Test Key
+        run: |
+          keytool -genkey -v -keystore test-key.jks -keyalg RSA -keysize 2048 -validity 10000 -alias testkey \
+            -storepass android -keypass android \
+            -dname "CN=Test, OU=Test, O=Test, L=Test, ST=Test, C=US"
+          echo "✅ Test key generated"
+      
+      - name: Sign APK
+        run: |
+          apksigner sign --ks test-key.jks --ks-pass pass:android --out app-signed.apk app-aligned.apk
+          echo "✅ APK signed"
+      
+      - name: Verify APK
+        run: |
+          apksigner verify app-signed.apk
+          echo "✅ APK verified"
+      
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: rebuilt-apk
+          path: app-signed.apk
+      
+      - name: Create Release
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v1
+        with:
+          files: app-signed.apk
+          tag_name: rebuild-${{ github.run_number }}
+          name: APK Rebuild #${{ github.run_number }}
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
